@@ -33,9 +33,7 @@ public class RemoteIntercomClient {
 
         RemoteIntercomClient that = (RemoteIntercomClient) o;
 
-        if (lastClientBroadcastTime != that.lastClientBroadcastTime) return false;
         if (!clientIpAddress.equals(that.clientIpAddress)) return false;
-        if (!clientMacAddress.equals(that.clientMacAddress)) return false;
         if (!clientName.equals(that.clientName)) return false;
 
         return true;
@@ -44,9 +42,7 @@ public class RemoteIntercomClient {
     @Override
     public int hashCode() {
         int result = clientName.hashCode();
-        result = 31 * result + clientMacAddress.hashCode();
         result = 31 * result + clientIpAddress.hashCode();
-        result = 31 * result + (int) (lastClientBroadcastTime ^ (lastClientBroadcastTime >>> 32));
         return result;
     }
 

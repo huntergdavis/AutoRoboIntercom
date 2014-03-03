@@ -466,6 +466,17 @@ public class AutoRoboMainScreen extends ListActivity implements
 
     private void addToClientList(String name, String ip) {
         RemoteIntercomClient newClient = new RemoteIntercomClient(name,ip);
+
+        // if we have the same remote client remove it and add the new updated time/mac version
+        Iterator<RemoteIntercomClient> clientIterator = clients.iterator();
+        while (clientIterator.hasNext()) {
+            if(clientIterator.next() == newClient) {
+                clientIterator.remove();
+                break;
+            }
+        }
+
+
         clients.add(newClient);
 
         // refresh our overall client list strings
