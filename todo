@@ -10,3 +10,6 @@ DONE audio input (stt)
 6. thread to broadcast client id every 15 minutes
 7. thread which sends any received text to TTS engine
 8. function to send txt to all clients
+
+
+
