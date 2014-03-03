@@ -4,11 +4,29 @@ import com.hunterdavis.autorobointercom.util.SystemUiHider;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
+import android.speech.RecognizerIntent;
+import android.speech.tts.TextToSpeech;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
@@ -16,7 +34,8 @@ import android.view.View;
  *
  * @see SystemUiHider
  */
-public class AutoRoboMainScreen extends Activity {
+public class AutoRoboMainScreen extends Activity implements
+        TextToSpeech.OnInitListener {
     /**
      * Whether or not the system UI should be auto-hidden after
      * {@link #AUTO_HIDE_DELAY_MILLIS} milliseconds.
@@ -45,6 +64,19 @@ public class AutoRoboMainScreen extends Activity {
      */
     private SystemUiHider mSystemUiHider;
 
+    // just a request status for voice input
+    protected static final int REQUEST_OK = 1;
+
+    // our SP reference label
+    protected static final String SHARED_PREFS_REFERENCE_LABEL = "AUTOROBOMAIN";
+
+    // our default name
+    protected static final String DEFAULT_CLIENT_NAME = "Default_Client_Name";
+
+    // our TTS
+    private TextToSpeech tts;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -53,6 +85,8 @@ public class AutoRoboMainScreen extends Activity {
 
         final View controlsView = findViewById(R.id.fullscreen_content_controls);
         final View contentView = findViewById(R.id.fullscreen_content);
+
+        tts = new TextToSpeech(this, this);
 
         // Set up an instance of SystemUiHider to control the system UI for
         // this activity.
@@ -111,8 +145,34 @@ public class AutoRoboMainScreen extends Activity {
         // Upon interacting with UI controls, delay any scheduled hide()
         // operations to prevent the jarring behavior of controls going away
         // while interacting with the UI.
-        findViewById(R.id.dummy_button).setOnTouchListener(mDelayHideTouchListener);
+        findViewById(R.id.record_audio_button).setOnTouchListener(mDelayHideTouchListener);
+        findViewById(R.id.send_text_button).setOnTouchListener(mDelayHideTouchListener);
+
+
+        // set up our record audio button to actually record audio
+        findViewById(R.id.record_audio_button).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, "en-US");
+                try {
+                    startActivityForResult(i, REQUEST_OK);
+                } catch (Exception e) {
+                    Toast.makeText(v.getContext(), "Error initializing speech to text engine.", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode==REQUEST_OK  && resultCode==RESULT_OK) {
+            ArrayList<String> thingsYouSaid = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            ((TextView)findViewById(R.id.text_to_send)).setText(thingsYouSaid.get(0));
+        }
+    }
+
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
@@ -122,6 +182,58 @@ public class AutoRoboMainScreen extends Activity {
         // created, to briefly hint to the user that UI controls
         // are available.
         delayedHide(100);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.auto_robo_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.enter_name:
+                getUserNameAndStoreIt();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void getUserNameAndStoreIt() {
+        // Set an EditText view to get user input
+        final EditText input = new EditText(this);
+        new AlertDialog.Builder(AutoRoboMainScreen.this)
+                .setTitle("Update Name")
+                .setMessage("Enter A Name For This Room")
+                .setView(input)
+                .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        Editable value = input.getText();
+                        if(!TextUtils.isEmpty(value)) {
+                            storeName(value.toString());
+                        }
+
+                    }
+                }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                // Do nothing.
+            }
+        }).show();
+    }
+
+    // store our name to shared prefs
+    private void storeName(String name) {
+        PreferenceManager.getDefaultSharedPreferences(this).edit().putString(SHARED_PREFS_REFERENCE_LABEL, name).commit();
+    }
+
+    // get our name from shared prefs
+    private String getName() {
+        return PreferenceManager.getDefaultSharedPreferences(this).getString(SHARED_PREFS_REFERENCE_LABEL, DEFAULT_CLIENT_NAME);
     }
 
 
@@ -155,5 +267,42 @@ public class AutoRoboMainScreen extends Activity {
     private void delayedHide(int delayMillis) {
         mHideHandler.removeCallbacks(mHideRunnable);
         mHideHandler.postDelayed(mHideRunnable, delayMillis);
+    }
+
+    @Override
+    public void onDestroy() {
+        // Don't forget to shutdown tts!
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
+        super.onDestroy();
+    }
+
+    @Override
+    public void onInit(int status) {
+
+        if (status == TextToSpeech.SUCCESS) {
+
+            int result = tts.setLanguage(Locale.US);
+
+            if (result == TextToSpeech.LANG_MISSING_DATA
+                    || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Toast.makeText(this, "Missing text to speech language!", Toast.LENGTH_LONG).show();
+            } else {
+                // success condition!  we're good to go
+            }
+
+        } else {
+            Toast.makeText(this, "Error initializing text to speech engine.", Toast.LENGTH_LONG).show();
+
+        }
+
+    }
+
+    // just a quick helper method to output speech from text
+    private void speakOut(String textToSpeak) {
+
+        tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null);
     }
 }
