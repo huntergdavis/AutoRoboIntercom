@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">AutoRoboIntercom</string>
+    <string name="send">Send Message</string>
+    <string name="default_text">Enter Text Here or Click the Mic on the Right</string>
+    <string name="clients">Client List</string>
+
+</resources>
