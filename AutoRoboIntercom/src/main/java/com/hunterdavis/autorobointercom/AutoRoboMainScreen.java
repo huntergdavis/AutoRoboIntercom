@@ -1,7 +1,9 @@
 package com.hunterdavis.autorobointercom;
 
+import com.hunterdavis.autorobointercom.network.NetworkAnnounceThread;
 import com.hunterdavis.autorobointercom.network.NetworkConstants;
 import com.hunterdavis.autorobointercom.network.NetworkReceiverThread;
+import com.hunterdavis.autorobointercom.network.NetworkTransmissionUtilities;
 import com.hunterdavis.autorobointercom.network.RemoteIntercomClient;
 import com.hunterdavis.autorobointercom.util.AutoRoboApplication;
 import com.hunterdavis.autorobointercom.util.SystemUiHider;
@@ -9,6 +11,7 @@ import com.hunterdavis.autorobointercom.util.SystemUiHider;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ListActivity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -18,6 +21,8 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.preference.PreferenceManager;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
@@ -30,7 +35,9 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,7 +48,9 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -50,7 +59,7 @@ import java.util.Locale;
  *
  * @see SystemUiHider
  */
-public class AutoRoboMainScreen extends Activity implements
+public class AutoRoboMainScreen extends ListActivity implements
         TextToSpeech.OnInitListener {
     /**
      * Whether or not the system UI should be auto-hidden after
@@ -63,6 +72,8 @@ public class AutoRoboMainScreen extends Activity implements
      * user interaction before hiding the system UI.
      */
     private static final int AUTO_HIDE_DELAY_MILLIS = 3000;
+
+    private static final long CLEAR_OUT_CLIENTS_TIMOUT = 1000 * 60 * 10; // 10 minutes
 
     /**
      * If set, will toggle the system UI visibility upon interaction. Otherwise,
@@ -86,13 +97,30 @@ public class AutoRoboMainScreen extends Activity implements
     // our TTS
     private TextToSpeech tts;
 
+    // our client list adapter
+    ArrayAdapter clientListAdapter;
+    private String[] clientList;
+
     // our multicast lock
     private WifiManager.MulticastLock multicastLock;
 
-    // our network receiver thread
+    // our network receiver, retransmission threads
     private NetworkReceiverThread networkThread;
+    private NetworkAnnounceThread networkAnnounceThread;
 
     private LinkedHashSet<RemoteIntercomClient> clients;
+
+    private Handler myUIHandler;
+
+    private Runnable mUpdateTimeTask = new Runnable() {
+        public void run() {
+            clearOutOldClients();
+            if(myUIHandler == null) {
+                myUIHandler = new Handler(Looper.getMainLooper());
+            }
+            myUIHandler.postDelayed(this, CLEAR_OUT_CLIENTS_TIMOUT);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,6 +135,8 @@ public class AutoRoboMainScreen extends Activity implements
         // setup our UI elements
         setupUI();
 
+        // setup our UI handler
+        myUIHandler = new Handler(Looper.getMainLooper());
 
         // set up our record audio button to actually record audio
         findViewById(R.id.record_audio_button).setOnClickListener(new View.OnClickListener() {
@@ -133,12 +163,30 @@ public class AutoRoboMainScreen extends Activity implements
             @Override
             public void onClick(View v) {
                 try {
-                    sendTextToAllClients();
+                    NetworkTransmissionUtilities.sendTextToAllClients(((EditText) findViewById(R.id.text_to_send)).getText().toString());
                 } catch (Exception e) {
                     Toast.makeText(v.getContext(), "Error sending text to clients.", Toast.LENGTH_LONG).show();
                 }
             }
         });
+
+
+        // setup our client list adapter
+        clientList = getClientNameList();
+        clientListAdapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_list_item_1,
+                clientList);
+        ListView listview = (ListView)findViewById(R.id.info_list);
+        listview.setAdapter(clientListAdapter);
+
+        networkThread = new NetworkReceiverThread();
+        networkThread.run();
+
+        networkAnnounceThread = new NetworkAnnounceThread();
+        networkAnnounceThread.run();
+
+        myUIHandler.postDelayed(mUpdateTimeTask,CLEAR_OUT_CLIENTS_TIMOUT);
+
     }
 
     private BroadcastReceiver networkDataReceiver = new BroadcastReceiver() {
@@ -162,6 +210,14 @@ public class AutoRoboMainScreen extends Activity implements
             }
         }
 
+        synchronized (networkAnnounceThread) {
+            try {
+                ((Runnable)networkAnnounceThread).wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
         LocalBroadcastManager.getInstance(this).unregisterReceiver(networkDataReceiver);
         super.onPause();
 
@@ -173,12 +229,10 @@ public class AutoRoboMainScreen extends Activity implements
         super.onResume();
 
         ((Runnable)networkThread).notifyAll();
+        ((Runnable)networkAnnounceThread).notifyAll();
 
         IntentFilter iff= new IntentFilter(NetworkConstants.BROADCAST_ACTION);
         LocalBroadcastManager.getInstance(this).registerReceiver(networkDataReceiver, iff);
-
-        networkThread = new NetworkReceiverThread();
-        networkThread.run();
     }
 
     @Override
@@ -240,16 +294,6 @@ public class AutoRoboMainScreen extends Activity implements
                 // Do nothing.
             }
         }).show();
-    }
-
-    private void sendTextToAllClients() throws IndexOutOfBoundsException, IOException {
-        String nameAndText = AutoRoboApplication.getName() + NetworkConstants.BROADCAST_EXTRA_SPECIAL_CHARACTER_DELIMINATOR + ((EditText)findViewById(R.id.text_to_send)).getText();
-
-        DatagramSocket socket = new DatagramSocket(NetworkConstants.DEFAULT_PORT);
-        byte buff[] = nameAndText.getBytes();
-        DatagramPacket packet = new DatagramPacket(buff, buff.length, InetAddress.getByName(NetworkConstants.DEFAULT_GROUP),9999);
-        socket.send(packet);
-        socket.close();
     }
 
     /**
@@ -411,9 +455,22 @@ public class AutoRoboMainScreen extends Activity implements
         }
     };
 
+    private String[] getClientNameList() {
+        ArrayList<String> clientNames = new ArrayList<String>();
+        for(RemoteIntercomClient client : clients) {
+            clientNames.add(client.clientName);
+        }
+
+        return (String[])clientNames.toArray();
+    }
+
     private void addToClientList(String name, String ip) {
         RemoteIntercomClient newClient = new RemoteIntercomClient(name,ip);
         clients.add(newClient);
+
+        // refresh our overall client list strings
+        clientList = getClientNameList();
+        clientListAdapter.notifyDataSetChanged();
     }
 
     // just a quick helper method to output speech from text
@@ -421,4 +478,21 @@ public class AutoRoboMainScreen extends Activity implements
 
         tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null);
     }
-}
+
+    private void clearOutOldClients() {
+        long currentTime = System.currentTimeMillis();
+
+        Iterator<RemoteIntercomClient> clientIterator = clients.iterator();
+        while (clientIterator.hasNext()) {
+            if((currentTime - clientIterator.next().lastClientBroadcastTime) > CLEAR_OUT_CLIENTS_TIMOUT) {
+                clientIterator.remove();
+            }
+        }
+
+        // here we should refresh the UI adapter to the listview
+        clientList = getClientNameList();
+        clientListAdapter.notifyDataSetChanged();
+
+    } // end of clear out old clients function
+
+} // end of class

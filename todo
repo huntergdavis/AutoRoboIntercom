@@ -4,12 +4,12 @@ DONE  menu item to launch popup dialog to capture new name
 DONE audio output (tts)
 DONE audio input (stt)
 
-3. message passing
-4. list of connected clients in CLA backed listview
-5. thread which removes clients from list after 30 minutes of inactivity
-6. thread to broadcast client id every 15 minutes
-7. thread which sends any received text to TTS engine
-8. function to send txt to all clients
+DONE message passing
+DONE list of connected clients in CLA backed listview
+DONE thread which removes clients from list after 30 minutes of inactivity
+DONE thread to broadcast client id every 15 minutes
+DONE thread which sends any received text to TTS engine
+DONE function to send txt to all clients
 
 
 
