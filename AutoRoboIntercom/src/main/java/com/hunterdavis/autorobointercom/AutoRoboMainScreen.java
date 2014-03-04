@@ -150,15 +150,7 @@ public class AutoRoboMainScreen extends Activity implements
             }
         });
 
-
-
-        // setup our client list adapter
-        clientList = getClientNameList();
-        clientListAdapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_list_item_1,
-                clientList);
-        ListView listview = (ListView)findViewById(R.id.info_list);
-        listview.setAdapter(clientListAdapter);
+        setupClientListAdapter();
 
         networkThread = new NetworkReceiverThread();
         networkThread.start();
@@ -168,6 +160,16 @@ public class AutoRoboMainScreen extends Activity implements
 
         myUIHandler.postDelayed(mUpdateTimeTask,CLEAR_OUT_CLIENTS_TIMOUT);
 
+    }
+
+    private void setupClientListAdapter() {
+        // setup our client list adapter
+        clientList = getClientNameList();
+        clientListAdapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_list_item_1,
+                clientList);
+        ListView listview = (ListView)findViewById(R.id.info_list);
+        listview.setAdapter(clientListAdapter);
     }
 
     private BroadcastReceiver networkDataReceiver = new BroadcastReceiver() {
@@ -346,7 +348,9 @@ public class AutoRoboMainScreen extends Activity implements
 
         clientNames.add(AutoRoboApplication.getName() + "(this room)");
 
-        return clientNames.toArray(new String[clientNames.size() + 1]);
+        Log.d("hunterhunter","client name size is" + clientNames.size());
+
+        return clientNames.toArray(new String[clientNames.size()]);
     }
 
     private void addToClientList(String name, String ip) {
@@ -354,7 +358,7 @@ public class AutoRoboMainScreen extends Activity implements
         clients.add(newClient);
 
         // refresh our overall client list strings
-        clientList = getClientNameList();
+        setupClientListAdapter();
         clientListAdapter.notifyDataSetChanged();
     }
 
@@ -376,8 +380,7 @@ public class AutoRoboMainScreen extends Activity implements
         }
 
         // here we should refresh the UI adapter to the listview
-        clientList = getClientNameList();
-
+        setupClientListAdapter();
         clientListAdapter.notifyDataSetChanged();
 
     } // end of clear out old clients function
