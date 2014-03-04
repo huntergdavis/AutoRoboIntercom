@@ -125,7 +125,7 @@ public class AutoRoboMainScreen extends Activity implements
                 i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                         RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                 try {
-                    Log.e("hunterhunter","requesting got here at least");
+                    //Log.e("hunterhunter","requesting got here at least");
                     startActivityForResult(i, REQUEST_OK);
                 } catch (Exception e) {
                     Toast.makeText(v.getContext(), "Error initializing speech to text engine.", Toast.LENGTH_LONG).show();
@@ -176,6 +176,7 @@ public class AutoRoboMainScreen extends Activity implements
         public void onReceive(Context context, Intent intent) {
 
             String networkMessage = intent.getStringExtra(NetworkConstants.BROADCAST_EXTRA_STRING_UDP_MESSAGE);
+            //Log.e("hunterhunter","network messasge is: " + networkMessage);
             handleNetworkData(networkMessage);
         }
     };
@@ -198,17 +199,18 @@ public class AutoRoboMainScreen extends Activity implements
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.e("hunterhunter","got here at least");
+        //Log.e("hunterhunter","got here at least");
         super.onActivityResult(requestCode, resultCode, data);
 
 
-        Log.e("hunterhunter","got here at least");
+        //Log.e("hunterhunter","got here at least");
 
         if (requestCode==REQUEST_OK  && resultCode==RESULT_OK) {
             ArrayList<String> thingsYouSaid = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 
             if(thingsYouSaid.size() > 0) {
-                ((TextView)findViewById(R.id.text_to_send)).setText(thingsYouSaid.get(0));
+                //((TextView)findViewById(R.id.text_to_send)).setText(thingsYouSaid.get(0));
+                Toast.makeText(this,"Message: " + thingsYouSaid.get(0) + "Sent!",Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -232,6 +234,7 @@ public class AutoRoboMainScreen extends Activity implements
         switch (item.getItemId()) {
             case R.id.enter_name:
                 getUserNameAndStoreIt();
+                clientListAdapter.notifyDataSetChanged();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -320,38 +323,34 @@ public class AutoRoboMainScreen extends Activity implements
         String message = results[1];
         String ip = results[2];
 
+        //Log.e("hunterhunter","name is " + name + ", and message is " + message + " and ip is" +ip);
+
+
+        if(!TextUtils.isEmpty(message) && (!(message.equals(" ")))) {
+
+            //Log.e("hunterhunter","attempting to say: " + name + " says " + message);
+            speakOut(name + " says " + message);
+        }
+
         // add this message into client list
         addToClientList(name,ip);
 
-        if(!TextUtils.isEmpty(message)  && message.length() > 0 && !message.equals(" ")) {
-            speakOut(name + " says " + message);
-        }
     };
 
     private String[] getClientNameList() {
         ArrayList<String> clientNames = new ArrayList<String>();
         for(RemoteIntercomClient client : clients) {
+            Log.d("hunterhunter","client name in list is: " + client.clientName);
             clientNames.add(client.clientName);
         }
 
         clientNames.add(AutoRoboApplication.getName() + "(this room)");
 
-        return clientNames.toArray(new String[clientNames.size()]);
+        return clientNames.toArray(new String[clientNames.size() + 1]);
     }
 
     private void addToClientList(String name, String ip) {
         RemoteIntercomClient newClient = new RemoteIntercomClient(name,ip);
-
-        // if we have the same remote client remove it and add the new updated time/mac version
-        Iterator<RemoteIntercomClient> clientIterator = clients.iterator();
-        while (clientIterator.hasNext()) {
-            if(clientIterator.next() == newClient) {
-                clientIterator.remove();
-                break;
-            }
-        }
-
-
         clients.add(newClient);
 
         // refresh our overall client list strings
@@ -362,6 +361,7 @@ public class AutoRoboMainScreen extends Activity implements
     // just a quick helper method to output speech from text
     private void speakOut(String textToSpeak) {
 
+        //Log.e("hunterhunter","attempting to say: " + textToSpeak);
         tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null);
     }
 

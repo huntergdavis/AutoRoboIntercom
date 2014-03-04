@@ -91,26 +91,28 @@ public class NetworkReceiverThread  extends Thread {
         while(received!=null && !mFinished && !mPaused)
         {
             byte[] buf = new byte[NetworkConstants.DEFAULT_DATAGRAM_SIZE];
+            byte val = '\n';
+            Arrays.fill(buf,val);
+
             packet = new DatagramPacket(buf, buf.length);
             socket.receive(packet);
 
-            received = new String(packet.getData());
+            received = new String(packet.getData()).split("\n")[0];
 
             if(TextUtils.isEmpty(received)) {
                 received = "";
             }
 
+            String hostsName = received.split(NetworkConstants.BROADCAST_EXTRA_SPECIAL_CHARACTER_DELIMINATOR)[0];
+            String ourHostName = AutoRoboApplication.getName();
             String hostAddress = packet.getAddress().getHostAddress();
 
-            String ourHostAddress = packet.getSocketAddress().toString().replace("/","").split(":")[0];
 
+            Log.d("hunter", "host name is " + hostsName + ", and our name is: " + ourHostName);
 
-            Log.d("hunter", "host address is " + hostAddress + ", and our address is: " + ourHostAddress);
-
-            if(!hostAddress.equalsIgnoreCase(ourHostAddress)) {
+            if(!hostsName.equalsIgnoreCase(ourHostName)) {
 
                 String receivedPlusNetworkInfo = received + NetworkConstants.BROADCAST_EXTRA_SPECIAL_CHARACTER_DELIMINATOR + hostAddress;
-
                 processMessage(receivedPlusNetworkInfo);
             }
 
