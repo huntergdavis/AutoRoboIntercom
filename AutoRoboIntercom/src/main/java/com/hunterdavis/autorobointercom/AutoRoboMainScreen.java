@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
@@ -62,35 +63,8 @@ import java.util.Locale;
  */
 public class AutoRoboMainScreen extends Activity implements
         TextToSpeech.OnInitListener {
-    /**
-     * Whether or not the system UI should be auto-hidden after
-     * {@link #AUTO_HIDE_DELAY_MILLIS} milliseconds.
-     */
-    private static final boolean AUTO_HIDE = true;
-
-    /**
-     * If {@link #AUTO_HIDE} is set, the number of milliseconds to wait after
-     * user interaction before hiding the system UI.
-     */
-    private static final int AUTO_HIDE_DELAY_MILLIS = 3000;
 
     private static final long CLEAR_OUT_CLIENTS_TIMOUT = 1000 * 60 * 10; // 10 minutes
-
-    /**
-     * If set, will toggle the system UI visibility upon interaction. Otherwise,
-     * will show the system UI visibility upon interaction.
-     */
-    private static final boolean TOGGLE_ON_CLICK = false;
-
-    /**
-     * The flags to pass to {@link SystemUiHider#getInstance}.
-     */
-    private static final int HIDER_FLAGS = SystemUiHider.FLAG_HIDE_NAVIGATION;
-
-    /**
-     * The instance of the {@link SystemUiHider} for this activity.
-     */
-    private SystemUiHider mSystemUiHider;
 
     // just a request status for voice input
     protected static final int REQUEST_OK = 1337;
@@ -102,8 +76,6 @@ public class AutoRoboMainScreen extends Activity implements
     ArrayAdapter clientListAdapter;
     private String[] clientList;
 
-    // our multicast lock
-    private WifiManager.MulticastLock multicastLock;
 
     // our network receiver, retransmission threads
     private NetworkReceiverThread networkThread;
@@ -112,6 +84,7 @@ public class AutoRoboMainScreen extends Activity implements
     private LinkedHashSet<RemoteIntercomClient> clients;
 
     private Handler myUIHandler;
+    PowerManager.WakeLock wl;
 
     private Runnable mUpdateTimeTask = new Runnable() {
         public void run() {
@@ -128,6 +101,10 @@ public class AutoRoboMainScreen extends Activity implements
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.autorobo_fullscreen);
+
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AutoRobo");
+        wl.acquire();
 
         clients = new LinkedHashSet<RemoteIntercomClient>();
 
@@ -156,11 +133,6 @@ public class AutoRoboMainScreen extends Activity implements
             }
         });
 
-        // Acquire multicast lock
-        WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-        multicastLock = wifi.createMulticastLock("multicastLock");
-        multicastLock.setReferenceCounted(true);
-        multicastLock.acquire();
 
         // set up our send text button to actuall send text
         findViewById(R.id.send_text_button).setOnClickListener(new View.OnClickListener() {
@@ -171,11 +143,14 @@ public class AutoRoboMainScreen extends Activity implements
                 } catch (Exception e) {
                     e.printStackTrace();
                     Toast.makeText(v.getContext(), "Error sending text to clients.", Toast.LENGTH_LONG).show();
+                } finally {
+                    ((EditText) findViewById(R.id.text_to_send)).setText("");
                 }
+
             }
         });
 
-        /*
+
 
         // setup our client list adapter
         clientList = getClientNameList();
@@ -186,8 +161,8 @@ public class AutoRoboMainScreen extends Activity implements
         listview.setAdapter(clientListAdapter);
 
         networkThread = new NetworkReceiverThread();
-        //networkThread.start();
-        */
+        networkThread.start();
+
         networkAnnounceThread = new NetworkAnnounceThread();
         networkAnnounceThread.start();
 
@@ -208,25 +183,8 @@ public class AutoRoboMainScreen extends Activity implements
     @Override
     protected void onPause() {
 
-//        synchronized (networkThread) {
- //           try {
-  //              networkThread.wait();
-   //         } catch (InterruptedException e) {
-    //            e.printStackTrace();
-     //       }
-      //  }
-
-//        synchronized (networkAnnounceThread) {
- //           try {
-  //              networkAnnounceThread.wait();
-   //         } catch (InterruptedException e) {
-    //            e.printStackTrace();
-     //       }
-      //  }
-
         LocalBroadcastManager.getInstance(this).unregisterReceiver(networkDataReceiver);
         super.onPause();
-
 
     }
 
@@ -234,12 +192,6 @@ public class AutoRoboMainScreen extends Activity implements
     protected void onResume() {
         super.onResume();
 
-//        synchronized (networkThread) {
-//            networkThread.notifyAll();
-//        }
-  //      synchronized (networkAnnounceThread) {
-  //          networkAnnounceThread.notifyAll();
-  //      }
         IntentFilter iff= new IntentFilter(NetworkConstants.BROADCAST_ACTION);
         LocalBroadcastManager.getInstance(this).registerReceiver(networkDataReceiver, iff);
     }
@@ -264,11 +216,6 @@ public class AutoRoboMainScreen extends Activity implements
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-
-        // Trigger the initial hide() shortly after the activity has been
-        // created, to briefly hint to the user that UI controls
-        // are available.
-        delayedHide(100);
     }
 
     @Override
@@ -313,37 +260,7 @@ public class AutoRoboMainScreen extends Activity implements
         }).show();
     }
 
-    /**
-     * Touch listener to use for in-layout UI controls to delay hiding the
-     * system UI. This is to prevent the jarring behavior of controls going away
-     * while interacting with activity UI.
-     */
-    View.OnTouchListener mDelayHideTouchListener = new View.OnTouchListener() {
-        @Override
-        public boolean onTouch(View view, MotionEvent motionEvent) {
-            if (AUTO_HIDE) {
-                delayedHide(AUTO_HIDE_DELAY_MILLIS);
-            }
-            return false;
-        }
-    };
 
-    Handler mHideHandler = new Handler();
-    Runnable mHideRunnable = new Runnable() {
-        @Override
-        public void run() {
-            mSystemUiHider.hide();
-        }
-    };
-
-    /**
-     * Schedules a call to hide() in [delay] milliseconds, canceling any
-     * previously scheduled calls.
-     */
-    private void delayedHide(int delayMillis) {
-        mHideHandler.removeCallbacks(mHideRunnable);
-        mHideHandler.postDelayed(mHideRunnable, delayMillis);
-    }
 
     @Override
     public void onDestroy() {
@@ -353,12 +270,10 @@ public class AutoRoboMainScreen extends Activity implements
             tts.shutdown();
         }
 
-        // Once your finish using it, release multicast lock
-        if (multicastLock != null) {
-            multicastLock.release();
-            multicastLock = null;
-        }
+        networkAnnounceThread.setFinished();
+        networkThread.setFinished();
 
+        wl.release();
 
         super.onDestroy();
     }
@@ -384,69 +299,10 @@ public class AutoRoboMainScreen extends Activity implements
 
     }
 
+
+
     public void setupUI() {
-        final View controlsView = findViewById(R.id.fullscreen_content_controls);
-        final View contentView = findViewById(R.id.fullscreen_content);
 
-        // Set up an instance of SystemUiHider to control the system UI for
-        // this activity.
-        mSystemUiHider = SystemUiHider.getInstance(this, contentView, HIDER_FLAGS);
-        mSystemUiHider.setup();
-        mSystemUiHider
-                .setOnVisibilityChangeListener(new SystemUiHider.OnVisibilityChangeListener() {
-                    // Cached values.
-                    int mControlsHeight;
-                    int mShortAnimTime;
-
-                    @Override
-                    @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
-                    public void onVisibilityChange(boolean visible) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
-                            // If the ViewPropertyAnimator API is available
-                            // (Honeycomb MR2 and later), use it to animate the
-                            // in-layout UI controls at the bottom of the
-                            // screen.
-                            if (mControlsHeight == 0) {
-                                mControlsHeight = controlsView.getHeight();
-                            }
-                            if (mShortAnimTime == 0) {
-                                mShortAnimTime = getResources().getInteger(
-                                        android.R.integer.config_shortAnimTime);
-                            }
-                            controlsView.animate()
-                                    .translationY(visible ? 0 : mControlsHeight)
-                                    .setDuration(mShortAnimTime);
-                        } else {
-                            // If the ViewPropertyAnimator APIs aren't
-                            // available, simply show or hide the in-layout UI
-                            // controls.
-                            controlsView.setVisibility(visible ? View.VISIBLE : View.GONE);
-                        }
-
-                        if (visible && AUTO_HIDE) {
-                            // Schedule a hide().
-                            delayedHide(AUTO_HIDE_DELAY_MILLIS);
-                        }
-                    }
-                });
-
-        // Set up the user interaction to manually show or hide the system UI.
-        contentView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (TOGGLE_ON_CLICK) {
-                    mSystemUiHider.toggle();
-                } else {
-                    mSystemUiHider.show();
-                }
-            }
-        });
-
-        // Upon interacting with UI controls, delay any scheduled hide()
-        // operations to prevent the jarring behavior of controls going away
-        // while interacting with the UI.
-        findViewById(R.id.record_audio_button).setOnTouchListener(mDelayHideTouchListener);
-        findViewById(R.id.send_text_button).setOnTouchListener(mDelayHideTouchListener);
 
     }
 
@@ -467,7 +323,7 @@ public class AutoRoboMainScreen extends Activity implements
         // add this message into client list
         addToClientList(name,ip);
 
-        if(!TextUtils.isEmpty(message)) {
+        if(!TextUtils.isEmpty(message)  && message.length() > 0 && !message.equals(" ")) {
             speakOut(name + " says " + message);
         }
     };
@@ -477,6 +333,8 @@ public class AutoRoboMainScreen extends Activity implements
         for(RemoteIntercomClient client : clients) {
             clientNames.add(client.clientName);
         }
+
+        clientNames.add(AutoRoboApplication.getName() + "(this room)");
 
         return clientNames.toArray(new String[clientNames.size()]);
     }
@@ -520,8 +378,7 @@ public class AutoRoboMainScreen extends Activity implements
         // here we should refresh the UI adapter to the listview
         clientList = getClientNameList();
 
-        // todo
-        //clientListAdapter.notifyDataSetChanged();
+        clientListAdapter.notifyDataSetChanged();
 
     } // end of clear out old clients function
 

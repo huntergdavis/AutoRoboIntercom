@@ -1,7 +1,10 @@
 package com.hunterdavis.autorobointercom.network;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -26,6 +29,9 @@ public class NetworkReceiverThread  extends Thread {
     private boolean mPaused;
     private boolean mFinished;
 
+    // our multicast lock
+    private WifiManager.MulticastLock multicastLock;
+
     public NetworkReceiverThread() {
         mPauseLock = new Object();
         mPaused = false;
@@ -38,6 +44,7 @@ public class NetworkReceiverThread  extends Thread {
             try {
                 receive();
             } catch (IOException e) {
+                mFinished = true;
                 e.printStackTrace();
             }
             synchronized (mPauseLock) {
@@ -60,12 +67,21 @@ public class NetworkReceiverThread  extends Thread {
         }
     }
 
+    public void setFinished() {
+        mFinished = true;
+    }
+
     public void receive() throws IOException {
         System.setProperty("java.net.preferIPv4Stack", "true");
-        MulticastSocket socket = new MulticastSocket();
-        socket.setReuseAddress(true);//redundant, already set with empty constructor
-        SocketAddress sockAddr = new InetSocketAddress(NetworkConstants.DEFAULT_PORT);
-        socket.bind(sockAddr);
+
+        // Acquire multicast lock
+        WifiManager wifi = (WifiManager) AutoRoboApplication.getContext().getSystemService(Context.WIFI_SERVICE);
+        multicastLock = wifi.createMulticastLock("multicastLock");
+        multicastLock.setReferenceCounted(true);
+        multicastLock.acquire();
+
+        MulticastSocket socket = new MulticastSocket(NetworkConstants.DEFAULT_PORT);
+
         InetAddress group = InetAddress.getByName(NetworkConstants.DEFAULT_GROUP);
         socket.joinGroup(group);
 
@@ -84,13 +100,30 @@ public class NetworkReceiverThread  extends Thread {
                 received = "";
             }
 
-            String receivedPlusNetworkInfo = received + NetworkConstants.BROADCAST_EXTRA_SPECIAL_CHARACTER_DELIMINATOR + packet.getAddress().getHostAddress();
+            String hostAddress = packet.getAddress().getHostAddress();
 
-            processMessage(receivedPlusNetworkInfo);
+            String ourHostAddress = packet.getSocketAddress().toString().replace("/","").split(":")[0];
+
+
+            Log.d("hunter", "host address is " + hostAddress + ", and our address is: " + ourHostAddress);
+
+            if(!hostAddress.equalsIgnoreCase(ourHostAddress)) {
+
+                String receivedPlusNetworkInfo = received + NetworkConstants.BROADCAST_EXTRA_SPECIAL_CHARACTER_DELIMINATOR + hostAddress;
+
+                processMessage(receivedPlusNetworkInfo);
+            }
+
         }
 
         socket.leaveGroup(group);
         socket.close();
+
+        // Once your finish using it, release multicast lock
+        if (multicastLock != null) {
+            multicastLock.release();
+            multicastLock = null;
+        }
     }
 
     private void processMessage(String message) {

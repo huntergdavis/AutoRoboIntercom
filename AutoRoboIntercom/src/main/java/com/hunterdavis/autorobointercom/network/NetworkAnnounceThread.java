@@ -11,7 +11,7 @@ public class NetworkAnnounceThread extends Thread{
     private boolean mFinished;
 
     // sleep for 5 minutes
-    private long mthreadSleepTime = 1000;// 1000 * 60 * 5;
+    private long mthreadSleepTime =  1000 * 60 * 5;
 
     public NetworkAnnounceThread() {
         mPauseLock = new Object();
@@ -19,6 +19,9 @@ public class NetworkAnnounceThread extends Thread{
         mFinished = false;
     }
 
+    public void setFinished() {
+        mFinished = true;
+    }
 
     @Override
     public void run() {
