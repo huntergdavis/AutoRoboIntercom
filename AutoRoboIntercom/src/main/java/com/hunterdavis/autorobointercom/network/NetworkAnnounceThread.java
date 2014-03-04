@@ -5,13 +5,13 @@ import java.io.IOException;
 /**
  * Created by hunter on 3/3/14.
  */
-public class NetworkAnnounceThread implements Runnable{
+public class NetworkAnnounceThread extends Thread{
     private Object mPauseLock;
     private boolean mPaused;
     private boolean mFinished;
 
     // sleep for 5 minutes
-    private long mthreadSleepTime = 1000 * 60 * 5;
+    private long mthreadSleepTime = 1000;// 1000 * 60 * 5;
 
     public NetworkAnnounceThread() {
         mPauseLock = new Object();

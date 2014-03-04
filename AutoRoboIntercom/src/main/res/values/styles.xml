@@ -15,7 +15,7 @@
 
     <!-- Application theme. -->
     <style name="AppTheme" parent="AppBaseTheme">
-            <item name="android:color">white</item>
+            <item name="android:color">#FFFFFF</item>
     </style>
 
     <style name="btnStyleGenoa" parent="@android:style/Widget.Button">

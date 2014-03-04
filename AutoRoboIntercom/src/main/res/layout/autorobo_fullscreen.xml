@@ -8,24 +8,53 @@
     <!-- The primary full-screen view. This can be replaced with whatever view
          is needed to present your content, e.g. VideoView, SurfaceView,
          TextureView, etc. -->
-    <TextView android:id="@+id/fullscreen_content"
+    <TextView android:id="@+id/fullscreen_content_controls"
         style="@style/FullscreenTheme"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:keepScreenOn="true"
-        android:textColor="#33b5e5"
-        android:textStyle="bold"
-        android:textSize="50sp"
         android:gravity="center"
-        android:text="@string/clients" />
+        android:keepScreenOn="true"
+        android:text="@string/clients"
+        android:textColor="#33b5e5"
+        android:textSize="50sp"
+        android:textStyle="bold" />
 
     <!-- This FrameLayout insets its children based on system windows using
          android:fitsSystemWindows. -->
-    <LinearLayout android:layout_width="match_parent"
+    <LinearLayout android:id="@+id/fullscreen_content" android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
         android:layout_marginBottom="5dip"
-        android:fitsSystemWindows="true">
+        android:fitsSystemWindows="true"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:background="@color/black_overlay"
+            android:orientation="horizontal"
+            android:paddingTop="5dip"
+            tools:ignore="UselessParent">
+
+            <EditText android:id="@+id/text_to_send"
+                style="@style/AppTheme"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:hint="@string/default_text" />
+
+            <ImageButton android:id="@+id/record_audio_button"
+                style="@style/ButtonBar"
+                android:layout_width="80dp"
+                android:layout_height="60dp"
+                android:layout_marginBottom="6dip"
+                android:layout_weight="1"
+                android:background="@drawable/mic"
+                android:paddingLeft="3dip"
+                android:layout_marginRight="3dip"
+                />
+        </LinearLayout>
+
 
         <LinearLayout
             style="@style/ButtonBar"
@@ -44,36 +73,10 @@
                 android:text="@string/send" />
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|center_horizontal"
-            android:paddingTop="5dip"
-            android:background="@color/black_overlay"
-            android:orientation="horizontal"
-            tools:ignore="UselessParent">
-
-            <EditText android:id="@+id/text_to_send"
-                android:layout_height="wrap_content"
-                android:layout_weight="3"
-                android:text="@string/default_text"
-                style="@style/AppTheme"
-                android:layout_width="wrap_content" />
-
-            <ImageButton android:id="@+id/record_audio_button"
-                style="@style/ButtonBar"
-                android:background="@drawable/mic"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:paddingLeft="3dip"
-                android:layout_marginBottom="6dip"
-                android:layout_weight="1"/>
-        </LinearLayout>
-
-    <ListView
-        android:id="@+id/info_list"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        <ListView
+            android:id="@+id/info_list"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
 
     </LinearLayout>
 

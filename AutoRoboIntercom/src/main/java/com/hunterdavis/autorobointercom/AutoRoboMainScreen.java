@@ -48,6 +48,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -59,7 +60,7 @@ import java.util.Locale;
  *
  * @see SystemUiHider
  */
-public class AutoRoboMainScreen extends ListActivity implements
+public class AutoRoboMainScreen extends Activity implements
         TextToSpeech.OnInitListener {
     /**
      * Whether or not the system UI should be auto-hidden after
@@ -79,7 +80,7 @@ public class AutoRoboMainScreen extends ListActivity implements
      * If set, will toggle the system UI visibility upon interaction. Otherwise,
      * will show the system UI visibility upon interaction.
      */
-    private static final boolean TOGGLE_ON_CLICK = true;
+    private static final boolean TOGGLE_ON_CLICK = false;
 
     /**
      * The flags to pass to {@link SystemUiHider#getInstance}.
@@ -92,7 +93,7 @@ public class AutoRoboMainScreen extends ListActivity implements
     private SystemUiHider mSystemUiHider;
 
     // just a request status for voice input
-    protected static final int REQUEST_OK = 1;
+    protected static final int REQUEST_OK = 1337;
 
     // our TTS
     private TextToSpeech tts;
@@ -143,8 +144,11 @@ public class AutoRoboMainScreen extends ListActivity implements
             @Override
             public void onClick(View v) {
                 Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, "en-US");
+
+                i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                 try {
+                    Log.e("hunterhunter","requesting got here at least");
                     startActivityForResult(i, REQUEST_OK);
                 } catch (Exception e) {
                     Toast.makeText(v.getContext(), "Error initializing speech to text engine.", Toast.LENGTH_LONG).show();
@@ -165,11 +169,13 @@ public class AutoRoboMainScreen extends ListActivity implements
                 try {
                     NetworkTransmissionUtilities.sendTextToAllClients(((EditText) findViewById(R.id.text_to_send)).getText().toString());
                 } catch (Exception e) {
+                    e.printStackTrace();
                     Toast.makeText(v.getContext(), "Error sending text to clients.", Toast.LENGTH_LONG).show();
                 }
             }
         });
 
+        /*
 
         // setup our client list adapter
         clientList = getClientNameList();
@@ -180,10 +186,10 @@ public class AutoRoboMainScreen extends ListActivity implements
         listview.setAdapter(clientListAdapter);
 
         networkThread = new NetworkReceiverThread();
-        networkThread.run();
-
+        //networkThread.start();
+        */
         networkAnnounceThread = new NetworkAnnounceThread();
-        networkAnnounceThread.run();
+        networkAnnounceThread.start();
 
         myUIHandler.postDelayed(mUpdateTimeTask,CLEAR_OUT_CLIENTS_TIMOUT);
 
@@ -202,21 +208,21 @@ public class AutoRoboMainScreen extends ListActivity implements
     @Override
     protected void onPause() {
 
-        synchronized (networkThread) {
-            try {
-                ((Runnable)networkThread).wait();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+//        synchronized (networkThread) {
+ //           try {
+  //              networkThread.wait();
+   //         } catch (InterruptedException e) {
+    //            e.printStackTrace();
+     //       }
+      //  }
 
-        synchronized (networkAnnounceThread) {
-            try {
-                ((Runnable)networkAnnounceThread).wait();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+//        synchronized (networkAnnounceThread) {
+ //           try {
+  //              networkAnnounceThread.wait();
+   //         } catch (InterruptedException e) {
+    //            e.printStackTrace();
+     //       }
+      //  }
 
         LocalBroadcastManager.getInstance(this).unregisterReceiver(networkDataReceiver);
         super.onPause();
@@ -228,19 +234,30 @@ public class AutoRoboMainScreen extends ListActivity implements
     protected void onResume() {
         super.onResume();
 
-        ((Runnable)networkThread).notifyAll();
-        ((Runnable)networkAnnounceThread).notifyAll();
-
+//        synchronized (networkThread) {
+//            networkThread.notifyAll();
+//        }
+  //      synchronized (networkAnnounceThread) {
+  //          networkAnnounceThread.notifyAll();
+  //      }
         IntentFilter iff= new IntentFilter(NetworkConstants.BROADCAST_ACTION);
         LocalBroadcastManager.getInstance(this).registerReceiver(networkDataReceiver, iff);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.e("hunterhunter","got here at least");
         super.onActivityResult(requestCode, resultCode, data);
+
+
+        Log.e("hunterhunter","got here at least");
+
         if (requestCode==REQUEST_OK  && resultCode==RESULT_OK) {
             ArrayList<String> thingsYouSaid = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            ((TextView)findViewById(R.id.text_to_send)).setText(thingsYouSaid.get(0));
+
+            if(thingsYouSaid.size() > 0) {
+                ((TextView)findViewById(R.id.text_to_send)).setText(thingsYouSaid.get(0));
+            }
         }
     }
 
@@ -461,7 +478,7 @@ public class AutoRoboMainScreen extends ListActivity implements
             clientNames.add(client.clientName);
         }
 
-        return (String[])clientNames.toArray();
+        return clientNames.toArray(new String[clientNames.size()]);
     }
 
     private void addToClientList(String name, String ip) {
@@ -502,7 +519,9 @@ public class AutoRoboMainScreen extends ListActivity implements
 
         // here we should refresh the UI adapter to the listview
         clientList = getClientNameList();
-        clientListAdapter.notifyDataSetChanged();
+
+        // todo
+        //clientListAdapter.notifyDataSetChanged();
 
     } // end of clear out old clients function
 

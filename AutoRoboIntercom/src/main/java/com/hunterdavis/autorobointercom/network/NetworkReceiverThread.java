@@ -13,13 +13,15 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
+import java.net.SocketAddress;
 import java.util.Arrays;
 
 /**
  * Created by hunter on 3/3/14.
  */
-public class NetworkReceiverThread  implements Runnable {
+public class NetworkReceiverThread  extends Thread {
     private Object mPauseLock;
     private boolean mPaused;
     private boolean mFinished;
@@ -59,7 +61,11 @@ public class NetworkReceiverThread  implements Runnable {
     }
 
     public void receive() throws IOException {
-        MulticastSocket socket = new MulticastSocket(NetworkConstants.DEFAULT_PORT);
+        System.setProperty("java.net.preferIPv4Stack", "true");
+        MulticastSocket socket = new MulticastSocket();
+        socket.setReuseAddress(true);//redundant, already set with empty constructor
+        SocketAddress sockAddr = new InetSocketAddress(NetworkConstants.DEFAULT_PORT);
+        socket.bind(sockAddr);
         InetAddress group = InetAddress.getByName(NetworkConstants.DEFAULT_GROUP);
         socket.joinGroup(group);
 
