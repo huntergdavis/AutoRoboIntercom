@@ -3,6 +3,9 @@ Initial Commit Hunter Davis March 2014
 
 Just a quick auto-discovery intercom system using text-to-speech and speech-to-text.  
 
+![Look Ma No Typing!](/artifacts/images/speaknow.png "AutoRoboIntercom")
+
+
 Notes:
 1. 
  I will likely update to include actual audio or video streams at some point.
