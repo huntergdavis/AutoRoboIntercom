@@ -422,7 +422,16 @@ public class AutoRoboMainScreen extends Activity implements
         int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 
         float batteryPct = level / (float)scale;
-        AutoRoboApplication.currentBatteryLevel = (int)batteryPct; // loss of precision
+
+        Log.d(TAG,"isCharging is : " + isCharging +
+            ", and chargePlug is:" + chargePlug +
+            ", and usbCharge is:" + usbCharge +
+            ", and acCharge is:" + acCharge +
+            ", and level is:" + level +
+            ", and scale is:" + scale
+        );
+
+        AutoRoboApplication.currentBatteryLevel = level;
     }
 
     private String[] getClientNameList() {
