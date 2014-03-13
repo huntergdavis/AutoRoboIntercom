@@ -17,6 +17,8 @@ import java.nio.channels.DatagramChannel;
  */
 public class NetworkTransmissionUtilities {
 
+    private static final String TAG = "hunterhunter";
+
     // send socket communication on a quick background thread
     public static void sendTextToAllClients(String textToSend) throws IndexOutOfBoundsException, IOException {
 
@@ -25,9 +27,10 @@ public class NetworkTransmissionUtilities {
             @Override
             protected Object doInBackground(String... params) {
                 try {
+
                     sendTextToClients(params[0]);
                 } catch (Exception e) {
-                    Log.e("hunter", "exception sending to clients");
+                    Log.e(TAG, "exception sending to clients");
                 }
                 return null;
             }
@@ -37,6 +40,8 @@ public class NetworkTransmissionUtilities {
 
     private static void sendTextToClients(String textToSend) throws IndexOutOfBoundsException, IOException {
         String nameAndText = AutoRoboApplication.getName() + NetworkConstants.BROADCAST_EXTRA_SPECIAL_CHARACTER_DELIMINATOR + textToSend;
+
+        Log.e(TAG,"Sending this to clients:"+nameAndText);
 
         DatagramChannel channel = DatagramChannel.open();
         DatagramSocket socket = channel.socket();

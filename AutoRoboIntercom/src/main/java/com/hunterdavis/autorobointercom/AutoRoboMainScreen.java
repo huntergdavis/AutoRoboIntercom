@@ -166,17 +166,20 @@ public class AutoRoboMainScreen extends Activity implements
         CharSequence choices[] = new CharSequence[] {"Battery Level"};
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Pick a color");
+        builder.setTitle("Choo-Choo-Choose Command");
         builder.setItems(choices, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 switch (which) {
                     case 0:
+                        String textToSend = name
+                                + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + NetworkConstants.BATTERY_REQUEST +
+                                NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + "shawty!";
+
+                        Log.d(TAG,"Sending " + textToSend);
                         // this is battery level
                         try {
-                            NetworkTransmissionUtilities.sendTextToAllClients(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + name
-                                    + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + NetworkConstants.BATTERY_REQUEST +
-                                    NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + "shawty!");
+                            NetworkTransmissionUtilities.sendTextToAllClients(textToSend);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -370,7 +373,7 @@ public class AutoRoboMainScreen extends Activity implements
 
         // this protocol is per-user, so see if this is to "us"
 
-        if(message.startsWith("--")) {
+        if(message.contains(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR)) {
             // we've got a non-spoken protocol
             String[] results = message.split(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR);
             String nameToMatch = results[0];
@@ -391,17 +394,35 @@ public class AutoRoboMainScreen extends Activity implements
     private void processARequest(String requestName, String requestValue, String senderName) {
         // first, let's check for our one known protocol - battery
         if(requestName.equalsIgnoreCase(NetworkConstants.BATTERY_CONFIRMATION)) {
-            speakOut("The Battery In " + AutoRoboApplication.getName() + " is " + requestValue +" percent full.");
+            speakOut("The Battery In " + senderName + " is " + requestValue +" percent full.");
         }else if(requestName.equalsIgnoreCase(NetworkConstants.BATTERY_REQUEST)) {
-
+            updateGlobalBattery();
            try {
-                NetworkTransmissionUtilities.sendTextToAllClients(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + senderName
+                NetworkTransmissionUtilities.sendTextToAllClients(senderName
                         + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + NetworkConstants.BATTERY_CONFIRMATION
                         + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + AutoRoboApplication.currentBatteryLevel);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private void updateGlobalBattery() {
+        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent intent = AutoRoboApplication.getContext().registerReceiver(null, ifilter);
+        int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+        boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL;
+
+        int chargePlug = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+        boolean usbCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_USB;
+        boolean acCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_AC;
+
+        int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+
+        float batteryPct = level / (float)scale;
+        AutoRoboApplication.currentBatteryLevel = (int)batteryPct; // loss of precision
     }
 
     private String[] getClientNameList() {

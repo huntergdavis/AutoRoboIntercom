@@ -16,7 +16,7 @@ public class AutoRoboApplication extends Application{
         protected static final String DEFAULT_CLIENT_NAME = "Default_Client_Name";
 
         // our current battery level
-        public static int currentBatteryLevel = 0;
+        public static int currentBatteryLevel = 100;
 
         private static AutoRoboApplication instance;
 
