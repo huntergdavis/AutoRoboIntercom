@@ -71,4 +71,11 @@ public class NetworkConstants {
 
     public static String BROADCAST_EXTRA_SPECIAL_CHARACTER_DELIMINATOR = ";;";
 
+    public static String NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR = "--";
+
+
+    // battery info
+    public static String BATTERY_REQUEST = "batteryRequest";
+    public static String BATTERY_CONFIRMATION = "batteryConfirmation";
+
 }

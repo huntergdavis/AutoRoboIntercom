@@ -20,6 +20,13 @@
 
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
+    <receiver android:name="com.hunterdavis.autorobointercom.util.PowerConnectionReceiver">
+        <intent-filter>
+            <action android:name="android.intent.action.ACTION_POWER_CONNECTED"/>
+            <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"/>
+        </intent-filter>
+    </receiver>
+
 
     <application
         android:allowBackup="true"

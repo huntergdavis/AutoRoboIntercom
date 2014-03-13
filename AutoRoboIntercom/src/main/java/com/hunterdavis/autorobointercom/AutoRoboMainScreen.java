@@ -1,30 +1,17 @@
 package com.hunterdavis.autorobointercom;
 
-import com.hunterdavis.autorobointercom.network.NetworkAnnounceThread;
-import com.hunterdavis.autorobointercom.network.NetworkConstants;
-import com.hunterdavis.autorobointercom.network.NetworkReceiverThread;
-import com.hunterdavis.autorobointercom.network.NetworkTransmissionUtilities;
-import com.hunterdavis.autorobointercom.network.RemoteIntercomClient;
-import com.hunterdavis.autorobointercom.util.AutoRoboApplication;
-import com.hunterdavis.autorobointercom.util.SystemUiHider;
-
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.ListActivity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.net.wifi.WifiManager;
-import android.os.Build;
+import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Message;
 import android.os.PowerManager;
-import android.preference.PreferenceManager;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.support.v4.content.LocalBroadcastManager;
@@ -34,25 +21,26 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.hunterdavis.autorobointercom.network.NetworkAnnounceThread;
+import com.hunterdavis.autorobointercom.network.NetworkConstants;
+import com.hunterdavis.autorobointercom.network.NetworkReceiverThread;
+import com.hunterdavis.autorobointercom.network.NetworkTransmissionUtilities;
+import com.hunterdavis.autorobointercom.network.RemoteIntercomClient;
+import com.hunterdavis.autorobointercom.util.AutoRoboApplication;
+import com.hunterdavis.autorobointercom.util.SystemUiHider;
+
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Locale;
 
 /**
@@ -63,6 +51,8 @@ import java.util.Locale;
  */
 public class AutoRoboMainScreen extends Activity implements
         TextToSpeech.OnInitListener {
+
+    private static final String TAG = "hunterhunterAutoRobo";
 
     private static final long CLEAR_OUT_CLIENTS_TIMOUT = 1000 * 60 * 10; // 10 minutes
 
@@ -85,6 +75,8 @@ public class AutoRoboMainScreen extends Activity implements
 
     private Handler myUIHandler;
     PowerManager.WakeLock wl;
+
+    private int currentBatteryLevel = 0;
 
     private Runnable mUpdateTimeTask = new Runnable() {
         public void run() {
@@ -125,7 +117,7 @@ public class AutoRoboMainScreen extends Activity implements
                 i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                         RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                 try {
-                    //Log.e("hunterhunter","requesting got here at least");
+                    //Log.e(TAG,"requesting got here at least");
                     startActivityForResult(i, REQUEST_OK);
                 } catch (Exception e) {
                     Toast.makeText(v.getContext(), "Error initializing speech to text engine.", Toast.LENGTH_LONG).show();
@@ -162,6 +154,39 @@ public class AutoRoboMainScreen extends Activity implements
 
     }
 
+    AdapterView.OnItemClickListener adapterListenerForClients = new AdapterView.OnItemClickListener(){
+        @Override
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            String name = ((TextView)view.findViewById(android.R.id.text1)).getText().toString();
+            showChoiceForAUser(name);
+        }
+    };
+
+    private void showChoiceForAUser(final String name) {
+        CharSequence choices[] = new CharSequence[] {"Battery Level"};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Pick a color");
+        builder.setItems(choices, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                switch (which) {
+                    case 0:
+                        // this is battery level
+                        try {
+                            NetworkTransmissionUtilities.sendTextToAllClients(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + name
+                                    + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + NetworkConstants.BATTERY_REQUEST +
+                                    NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + "shawty!");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                }
+            }
+        });
+        builder.show();
+    }
+
     private void setupClientListAdapter() {
         // setup our client list adapter
         clientList = getClientNameList();
@@ -170,6 +195,7 @@ public class AutoRoboMainScreen extends Activity implements
                 clientList);
         ListView listview = (ListView)findViewById(R.id.info_list);
         listview.setAdapter(clientListAdapter);
+        listview.setOnItemClickListener(adapterListenerForClients);
     }
 
     private BroadcastReceiver networkDataReceiver = new BroadcastReceiver() {
@@ -178,7 +204,7 @@ public class AutoRoboMainScreen extends Activity implements
         public void onReceive(Context context, Intent intent) {
 
             String networkMessage = intent.getStringExtra(NetworkConstants.BROADCAST_EXTRA_STRING_UDP_MESSAGE);
-            //Log.e("hunterhunter","network messasge is: " + networkMessage);
+            //Log.e(TAG,"network messasge is: " + networkMessage);
             handleNetworkData(networkMessage);
         }
     };
@@ -201,11 +227,11 @@ public class AutoRoboMainScreen extends Activity implements
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        //Log.e("hunterhunter","got here at least");
+        //Log.e(TAG,"got here at least");
         super.onActivityResult(requestCode, resultCode, data);
 
 
-        //Log.e("hunterhunter","got here at least");
+        //Log.e(TAG,"got here at least");
 
         if (requestCode==REQUEST_OK  && resultCode==RESULT_OK) {
             ArrayList<String> thingsYouSaid = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
@@ -325,13 +351,12 @@ public class AutoRoboMainScreen extends Activity implements
         String message = results[1];
         String ip = results[2];
 
-        //Log.e("hunterhunter","name is " + name + ", and message is " + message + " and ip is" +ip);
+        //Log.e(TAG,"name is " + name + ", and message is " + message + " and ip is" +ip);
 
 
         if(!TextUtils.isEmpty(message) && (!(message.equals(" ")))) {
+            processMessage(name,message,ip);
 
-            //Log.e("hunterhunter","attempting to say: " + name + " says " + message);
-            speakOut(name + " says " + message);
         }
 
         // add this message into client list
@@ -339,16 +364,56 @@ public class AutoRoboMainScreen extends Activity implements
 
     };
 
+    private void processMessage(String senderName, String message, String ip) {
+        //Log.e(TAG,"attempting to say: " + name + " says " + message);
+
+
+        // this protocol is per-user, so see if this is to "us"
+
+        if(message.startsWith("--")) {
+            // we've got a non-spoken protocol
+            String[] results = message.split(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR);
+            String nameToMatch = results[0];
+            String requestName = results[1];
+            String requestValue = results[2];
+            Log.d(TAG,"nameToMatch is:" + nameToMatch + "and requestName is:" + requestName + " and Value is" + requestValue);
+
+            if(nameToMatch.equalsIgnoreCase(AutoRoboApplication.getName())) {
+                Log.d(TAG,"we've got a matched name between our name "+AutoRoboApplication.getName()+", and the send name"+nameToMatch+", which was sent from "+senderName);
+                processARequest(requestName, requestValue,senderName);
+            }
+
+        }else {
+            speakOut(senderName + " says " + message);
+        }
+    }
+
+    private void processARequest(String requestName, String requestValue, String senderName) {
+        // first, let's check for our one known protocol - battery
+        if(requestName.equalsIgnoreCase(NetworkConstants.BATTERY_CONFIRMATION)) {
+            speakOut("The Battery In " + AutoRoboApplication.getName() + " is " + requestValue +" percent full.");
+        }else if(requestName.equalsIgnoreCase(NetworkConstants.BATTERY_REQUEST)) {
+
+           try {
+                NetworkTransmissionUtilities.sendTextToAllClients(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + senderName
+                        + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + NetworkConstants.BATTERY_CONFIRMATION
+                        + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + AutoRoboApplication.currentBatteryLevel);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private String[] getClientNameList() {
         ArrayList<String> clientNames = new ArrayList<String>();
         for(RemoteIntercomClient client : clients) {
-            Log.d("hunterhunter","client name in list is: " + client.clientName);
+            Log.d(TAG,"client name in list is: " + client.clientName);
             clientNames.add(client.clientName);
         }
 
         clientNames.add(AutoRoboApplication.getName() + "(this room)");
 
-        Log.d("hunterhunter","client name size is" + clientNames.size());
+        Log.d(TAG,"client name size is" + clientNames.size());
 
         return clientNames.toArray(new String[clientNames.size()]);
     }
@@ -365,7 +430,7 @@ public class AutoRoboMainScreen extends Activity implements
     // just a quick helper method to output speech from text
     private void speakOut(String textToSpeak) {
 
-        //Log.e("hunterhunter","attempting to say: " + textToSpeak);
+        //Log.e(TAG,"attempting to say: " + textToSpeak);
         tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null);
     }
 
