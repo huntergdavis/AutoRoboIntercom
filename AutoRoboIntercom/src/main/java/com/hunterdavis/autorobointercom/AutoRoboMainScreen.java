@@ -35,6 +35,7 @@ import com.hunterdavis.autorobointercom.network.NetworkReceiverThread;
 import com.hunterdavis.autorobointercom.network.NetworkTransmissionUtilities;
 import com.hunterdavis.autorobointercom.network.RemoteIntercomClient;
 import com.hunterdavis.autorobointercom.util.AutoRoboApplication;
+import com.hunterdavis.autorobointercom.util.MessageProcessing;
 import com.hunterdavis.autorobointercom.util.SystemUiHider;
 
 import java.io.IOException;
@@ -358,7 +359,7 @@ public class AutoRoboMainScreen extends Activity implements
 
 
         if(!TextUtils.isEmpty(message) && (!(message.equals(" ")))) {
-            processMessage(name,message,ip);
+            MessageProcessing.processMessage(name, message, ip,tts);
 
         }
 
@@ -367,72 +368,6 @@ public class AutoRoboMainScreen extends Activity implements
 
     };
 
-    private void processMessage(String senderName, String message, String ip) {
-        //Log.e(TAG,"attempting to say: " + name + " says " + message);
-
-
-        // this protocol is per-user, so see if this is to "us"
-
-        if(message.contains(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR)) {
-            // we've got a non-spoken protocol
-            String[] results = message.split(NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR);
-            String nameToMatch = results[0];
-            String requestName = results[1];
-            String requestValue = results[2];
-            Log.d(TAG,"nameToMatch is:" + nameToMatch + "and requestName is:" + requestName + " and Value is" + requestValue);
-
-            if(nameToMatch.equalsIgnoreCase(AutoRoboApplication.getName())) {
-                Log.d(TAG,"we've got a matched name between our name "+AutoRoboApplication.getName()+", and the send name"+nameToMatch+", which was sent from "+senderName);
-                processARequest(requestName, requestValue,senderName);
-            }
-
-        }else {
-            speakOut(senderName + " says " + message);
-        }
-    }
-
-    private void processARequest(String requestName, String requestValue, String senderName) {
-        // first, let's check for our one known protocol - battery
-        if(requestName.equalsIgnoreCase(NetworkConstants.BATTERY_CONFIRMATION)) {
-            speakOut("The Battery In " + senderName + " is " + requestValue +" percent full.");
-        }else if(requestName.equalsIgnoreCase(NetworkConstants.BATTERY_REQUEST)) {
-            updateGlobalBattery();
-           try {
-                NetworkTransmissionUtilities.sendTextToAllClients(senderName
-                        + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + NetworkConstants.BATTERY_CONFIRMATION
-                        + NetworkConstants.NON_SPOKEN_EXTRA_CHARACTER_DELIMINATOR + AutoRoboApplication.currentBatteryLevel);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private void updateGlobalBattery() {
-        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        Intent intent = AutoRoboApplication.getContext().registerReceiver(null, ifilter);
-        int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-        boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                status == BatteryManager.BATTERY_STATUS_FULL;
-
-        int chargePlug = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-        boolean usbCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_USB;
-        boolean acCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_AC;
-
-        int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-        int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-
-        float batteryPct = level / (float)scale;
-
-        Log.d(TAG,"isCharging is : " + isCharging +
-            ", and chargePlug is:" + chargePlug +
-            ", and usbCharge is:" + usbCharge +
-            ", and acCharge is:" + acCharge +
-            ", and level is:" + level +
-            ", and scale is:" + scale
-        );
-
-        AutoRoboApplication.currentBatteryLevel = level;
-    }
 
     private String[] getClientNameList() {
         ArrayList<String> clientNames = new ArrayList<String>();
@@ -457,12 +392,6 @@ public class AutoRoboMainScreen extends Activity implements
         clientListAdapter.notifyDataSetChanged();
     }
 
-    // just a quick helper method to output speech from text
-    private void speakOut(String textToSpeak) {
-
-        //Log.e(TAG,"attempting to say: " + textToSpeak);
-        tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null);
-    }
 
     private void clearOutOldClients() {
         long currentTime = System.currentTimeMillis();
