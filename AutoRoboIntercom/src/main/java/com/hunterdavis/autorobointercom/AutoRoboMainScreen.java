@@ -16,6 +16,7 @@ import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarActivity;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.util.Log;
@@ -52,7 +53,7 @@ import java.util.Locale;
  *
  * @see SystemUiHider
  */
-public class AutoRoboMainScreen extends Activity implements
+public class AutoRoboMainScreen extends ActionBarActivity implements
         TextToSpeech.OnInitListener {
 
     private static final String TAG = "hunterhunterAutoRobo";
@@ -269,6 +270,11 @@ public class AutoRoboMainScreen extends Activity implements
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        // Pass the event to ActionBarDrawerToggle, if it returns
+        // true, then it has handled the app icon touch event
+        if (MenuDrawerHelper.mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
         // Handle item selection
         switch (item.getItemId()) {
             case R.id.enter_name:
@@ -341,9 +347,7 @@ public class AutoRoboMainScreen extends Activity implements
 
     }
 
-
-
-    public void setupUI(Activity activity) {
+    public void setupUI(ActionBarActivity activity) {
         MenuDrawerHelper.setupMenuDrawerUI(activity,mDrawerLayout,mDrawerList);
     }
 

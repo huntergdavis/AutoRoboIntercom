@@ -3,12 +3,14 @@ package com.hunterdavis.autorobointercom;
 import android.os.Bundle;
 import android.app.Activity;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.ListView;
 
 import com.hunterdavis.autorobointercom.util.MenuDrawerHelper;
 
-public class AlarmsActivity extends Activity {
+public class AlarmsActivity extends ActionBarActivity {
 
     // drawer layout
     private DrawerLayout mDrawerLayout;
@@ -30,8 +32,23 @@ public class AlarmsActivity extends Activity {
         return true;
     }
 
-    public void setupUI(Activity activity) {
+    public void setupUI(ActionBarActivity activity) {
         MenuDrawerHelper.setupMenuDrawerUI(activity, mDrawerLayout, mDrawerList);
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Pass the event to ActionBarDrawerToggle, if it returns
+        // true, then it has handled the app icon touch event
+        if (MenuDrawerHelper.mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+        // Handle item selection
+        switch (item.getItemId()) {
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
     
 }

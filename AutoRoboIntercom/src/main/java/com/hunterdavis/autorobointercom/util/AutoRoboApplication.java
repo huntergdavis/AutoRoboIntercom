@@ -9,8 +9,6 @@ import android.preference.PreferenceManager;
  */
 public class AutoRoboApplication extends Application{
 
-        // our menudrawer items
-        public static CharSequence menuDrawerChoices[] = new CharSequence[] {"Clients","Alarms"};
 
         // our SP reference label
         protected static final String SHARED_PREFS_REFERENCE_LABEL = "AUTOROBOMAIN";
