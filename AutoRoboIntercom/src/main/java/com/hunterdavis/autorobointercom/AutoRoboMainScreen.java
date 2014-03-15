@@ -115,22 +115,6 @@ public class AutoRoboMainScreen extends ActionBarActivity implements
         // setup our UI handler
         myUIHandler = new Handler(Looper.getMainLooper());
 
-        // set up our record audio button to actually record audio
-        findViewById(R.id.record_audio_button).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-
-                i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                try {
-                    //Log.e(TAG,"requesting got here at least");
-                    startActivityForResult(i, SpeechUtils.REQUEST_OK);
-                } catch (Exception e) {
-                    Toast.makeText(v.getContext(), "Error initializing speech to text engine.", Toast.LENGTH_LONG).show();
-                }
-            }
-        });
 
 
         // set up our send text button to actuall send text
@@ -351,6 +335,24 @@ public class AutoRoboMainScreen extends ActionBarActivity implements
     }
 
     public void setupUI(ActionBarActivity activity) {
+
+        // set up our record audio button to actually record audio
+        findViewById(R.id.record_audio_button).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+
+                i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                try {
+                    //Log.e(TAG,"requesting got here at least");
+                    startActivityForResult(i, SpeechUtils.REQUEST_OK);
+                } catch (Exception e) {
+                    Toast.makeText(v.getContext(), "Error initializing speech to text engine.", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
         MenuDrawerHelper.setupMenuDrawerUI(activity,mDrawerLayout,mDrawerList);
     }
 
