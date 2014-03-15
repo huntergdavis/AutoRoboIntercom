@@ -3,6 +3,7 @@
 
     <string name="app_name">AutoRoboIntercom</string>
     <string name="send">Send Message!</string>
+    <string name="add_alarm">Add Alarm!</string>
     <string name="default_text">Enter Text Here or Click the Mic on the Right</string>
     <string name="clients"></string>
     <string name="drawer_open">Open</string>

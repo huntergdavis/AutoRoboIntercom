@@ -36,6 +36,7 @@ import com.hunterdavis.autorobointercom.network.NetworkReceiverThread;
 import com.hunterdavis.autorobointercom.network.NetworkTransmissionUtilities;
 import com.hunterdavis.autorobointercom.network.RemoteIntercomClient;
 import com.hunterdavis.autorobointercom.util.AutoRoboApplication;
+import com.hunterdavis.autorobointercom.util.MenuDrawerHelper;
 import com.hunterdavis.autorobointercom.util.MessageProcessing;
 import com.hunterdavis.autorobointercom.util.SystemUiHider;
 
@@ -109,7 +110,7 @@ public class AutoRoboMainScreen extends Activity implements
         tts = new TextToSpeech(this, this);
 
         // setup our UI elements
-        setupUI();
+        setupUI(this);
 
 
         // setup our UI handler
@@ -342,35 +343,8 @@ public class AutoRoboMainScreen extends Activity implements
 
 
 
-    public void setupUI() {
-
-        // setup our drawer layout
-        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-        mDrawerList = (ListView) findViewById(R.id.left_drawer);
-        // Set the adapter for the list view
-        mDrawerList.setAdapter(new ArrayAdapter<CharSequence>(this,
-                R.layout.drawer_list_item, AutoRoboApplication.menuDrawerChoices));
-        // Set the list's click listener
-        mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Intent intent = null;
-                switch (position) {
-                    case 0:
-                        intent = new Intent(AutoRoboApplication.getContext(), AutoRoboMainScreen.class);
-                        startActivity(intent);
-                        break;
-                    case 1:
-                        intent = new Intent(AutoRoboApplication.getContext(), AutoRoboMainScreen.class);
-                        startActivity(intent);
-
-                        break;
-                    default:
-                        break;
-                }
-            }
-        });
-
+    public void setupUI(Activity activity) {
+        MenuDrawerHelper.setupMenuDrawerUI(activity,mDrawerLayout,mDrawerList);
     }
 
     // here we handle our network data
