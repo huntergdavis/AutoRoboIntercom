@@ -5,5 +5,10 @@
     <string name="send">Send Message!</string>
     <string name="default_text">Enter Text Here or Click the Mic on the Right</string>
     <string name="clients"></string>
+    <string name="drawer_open">Open</string>
+    <string name="drawer_close">Close</string>
+    <string name="title_activity_alarms">Alarms</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
 
 </resources>

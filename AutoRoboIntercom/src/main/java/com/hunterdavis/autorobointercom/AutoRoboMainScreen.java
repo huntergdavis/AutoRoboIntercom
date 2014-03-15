@@ -15,6 +15,7 @@ import android.os.PowerManager;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.widget.DrawerLayout;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.util.Log;
@@ -59,6 +60,10 @@ public class AutoRoboMainScreen extends Activity implements
 
     // just a request status for voice input
     protected static final int REQUEST_OK = 1337;
+
+    // drawer layout
+    private DrawerLayout mDrawerLayout;
+    private ListView mDrawerList;
 
     // our TTS
     private TextToSpeech tts;
@@ -105,6 +110,7 @@ public class AutoRoboMainScreen extends Activity implements
 
         // setup our UI elements
         setupUI();
+
 
         // setup our UI handler
         myUIHandler = new Handler(Looper.getMainLooper());
@@ -338,6 +344,32 @@ public class AutoRoboMainScreen extends Activity implements
 
     public void setupUI() {
 
+        // setup our drawer layout
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        mDrawerList = (ListView) findViewById(R.id.left_drawer);
+        // Set the adapter for the list view
+        mDrawerList.setAdapter(new ArrayAdapter<CharSequence>(this,
+                R.layout.drawer_list_item, AutoRoboApplication.menuDrawerChoices));
+        // Set the list's click listener
+        mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Intent intent = null;
+                switch (position) {
+                    case 0:
+                        intent = new Intent(AutoRoboApplication.getContext(), AutoRoboMainScreen.class);
+                        startActivity(intent);
+                        break;
+                    case 1:
+                        intent = new Intent(AutoRoboApplication.getContext(), AutoRoboMainScreen.class);
+                        startActivity(intent);
+
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
 
     }
 
