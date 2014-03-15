@@ -39,6 +39,7 @@ import com.hunterdavis.autorobointercom.network.RemoteIntercomClient;
 import com.hunterdavis.autorobointercom.util.AutoRoboApplication;
 import com.hunterdavis.autorobointercom.util.MenuDrawerHelper;
 import com.hunterdavis.autorobointercom.util.MessageProcessing;
+import com.hunterdavis.autorobointercom.util.SpeechUtils;
 import com.hunterdavis.autorobointercom.util.SystemUiHider;
 
 import java.io.IOException;
@@ -59,9 +60,6 @@ public class AutoRoboMainScreen extends ActionBarActivity implements
     private static final String TAG = "hunterhunterAutoRobo";
 
     private static final long CLEAR_OUT_CLIENTS_TIMOUT = 1000 * 60 * 10; // 10 minutes
-
-    // just a request status for voice input
-    protected static final int REQUEST_OK = 1337;
 
     // drawer layout
     private DrawerLayout mDrawerLayout;
@@ -127,7 +125,7 @@ public class AutoRoboMainScreen extends ActionBarActivity implements
                         RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                 try {
                     //Log.e(TAG,"requesting got here at least");
-                    startActivityForResult(i, REQUEST_OK);
+                    startActivityForResult(i, SpeechUtils.REQUEST_OK);
                 } catch (Exception e) {
                     Toast.makeText(v.getContext(), "Error initializing speech to text engine.", Toast.LENGTH_LONG).show();
                 }
@@ -245,11 +243,16 @@ public class AutoRoboMainScreen extends ActionBarActivity implements
 
         //Log.e(TAG,"got here at least");
 
-        if (requestCode==REQUEST_OK  && resultCode==RESULT_OK) {
+        if (requestCode==SpeechUtils.REQUEST_OK  && resultCode==RESULT_OK) {
             ArrayList<String> thingsYouSaid = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 
             if(thingsYouSaid.size() > 0) {
                 //((TextView)findViewById(R.id.text_to_send)).setText(thingsYouSaid.get(0));
+                try {
+                    NetworkTransmissionUtilities.sendTextToAllClients(thingsYouSaid.get(0));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 Toast.makeText(this,"Message: " + thingsYouSaid.get(0) + "Sent!",Toast.LENGTH_SHORT).show();
             }
         }
