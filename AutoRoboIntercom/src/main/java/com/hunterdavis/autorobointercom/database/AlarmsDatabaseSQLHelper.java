@@ -2,10 +2,18 @@ package com.hunterdavis.autorobointercom.database;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
+import android.database.MatrixCursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.text.TextUtils;
+
+import com.hunterdavis.autorobointercom.network.NetworkTransmissionUtilities;
+
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 
 /**
  * Created by hunter on 3/16/14.
@@ -39,6 +47,81 @@ public class AlarmsDatabaseSQLHelper extends SQLiteOpenHelper {
     public AlarmsDatabaseSQLHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
+
+    public void processAllAlarms() {
+
+        // test columns for now
+        String testCols[] = {"test","test"};
+
+        Cursor cursor = new MatrixCursor(testCols);
+
+        // here we select * from alarms where time isn't too far away
+
+        while (cursor.moveToNext()) {
+            int nextAlarmId = cursor.getInt(0);
+            processSingleAlarm(null,"","",new AlarmInfo(),nextAlarmId);
+        }
+    }
+
+
+    public void processSingleAlarm(String alarmRecipients[], String alarmText, String metadata, AlarmInfo alarm, int alarmDatabaseId) {
+
+        // first, we'll need to actually send out the alarm
+        NetworkTransmissionUtilities.sendAlarmTextToAllClients(null,alarmText,metadata);
+
+        long nextTime = getNextDayAndTimeInEpochTimeFromAlarm(alarm);
+        updateAlarmWithNewTime(alarm, nextTime,alarmDatabaseId);
+    }
+
+    public void updateAlarmWithNewTime(AlarmInfo alarm, long nextTime, int alarmDatabaseId) {
+        // database update
+    }
+
+    public long getNextDayAndTimeInEpochTimeFromAlarm(AlarmInfo alarm) {
+        // get time from alarm
+        int seconds = (int) alarm.getWhatTimeDuringDay() / 1000;
+        int minutesTotal = seconds / 60;
+        int hours = minutesTotal / 60;
+        int minutesOffset = minutesTotal % 60;
+
+        // get our current date
+        Calendar dateCalendar = new GregorianCalendar();
+        Date date = new Date();
+        dateCalendar.setTime(date);
+
+        // see if it's later today
+        int totalMinutesPassedToday = 60 * dateCalendar.get(Calendar.HOUR_OF_DAY);
+        totalMinutesPassedToday += dateCalendar.get(Calendar.MINUTE);
+
+
+        int dateForNextAlarm = Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1;
+
+        if(alarm.getWhichDay(dateForNextAlarm)) {
+            if (minutesTotal < (totalMinutesPassedToday + 1)) {
+                dateForNextAlarm = 7;
+            }
+        } else {
+            // why does java use 1-based days indexing??
+            // convert to 0-based
+            dateForNextAlarm++;
+            while(!alarm.getWhichDay(dateForNextAlarm)) {
+                if(dateForNextAlarm == 7) {
+                    // we've gone full circle, somethings wrong
+                    return -1;
+                }
+                dateForNextAlarm++;
+            }
+        }
+
+        // add in the number of days till our next alarm, converted to 1 based
+        dateCalendar.add(Calendar.DAY_OF_WEEK,dateForNextAlarm+1);
+
+        // set the absolute hour of day and minute for the alarm
+        dateCalendar.set(Calendar.HOUR_OF_DAY,hours);
+        dateCalendar.set(Calendar.MINUTE, minutesOffset);
+
+        return dateCalendar.getTimeInMillis();
+    };
 
     public long insertAlarm(String recipients[],String text, int whatDays, long whatTimes, String metaData) {
 

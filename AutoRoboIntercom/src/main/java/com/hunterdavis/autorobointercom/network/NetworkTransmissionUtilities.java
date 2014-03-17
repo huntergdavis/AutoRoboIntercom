@@ -38,6 +38,27 @@ public class NetworkTransmissionUtilities {
 
     }
 
+    public static void sendAlarmTextToAllClients(String[] recipients, String text, String metadata) {
+
+        // todo - do something with recipients - for now all
+        // todo - do something with metadata
+
+        new AsyncTask<String,Object,Object>() {
+
+            @Override
+            protected Object doInBackground(String... params) {
+                try {
+
+                    sendTextToClients(params[0]);
+                } catch (Exception e) {
+                    Log.e(TAG, "exception sending to clients");
+                }
+                return null;
+            }
+        }.execute(text);
+
+    }
+
     private static void sendTextToClients(String textToSend) throws IndexOutOfBoundsException, IOException {
         String nameAndText = AutoRoboApplication.getName() + NetworkConstants.BROADCAST_EXTRA_SPECIAL_CHARACTER_DELIMINATOR + textToSend;
 
