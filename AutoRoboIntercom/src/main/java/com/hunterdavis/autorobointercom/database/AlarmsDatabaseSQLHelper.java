@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.text.TextUtils;
 
 /**
  * Created by hunter on 3/16/14.
@@ -23,6 +24,8 @@ public class AlarmsDatabaseSQLHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION = 1;
     private static SQLiteDatabase database;
 
+    private static final String ALARM_RECIPIENTS_DELIMINATOR = ";;";
+
     // creation SQLite statement
     private static final String DATABASE_CREATE = "create table " + ALARMS
             + "(" + COLUMN_ALARM_ID + " integer primary key autoincrement, "
@@ -37,9 +40,32 @@ public class AlarmsDatabaseSQLHelper extends SQLiteOpenHelper {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
+    public long insertAlarm(String recipients[],String text, int whatDays, long whatTimes, String metaData) {
+
+        // create a single string from the recipeints list
+        StringBuilder recipeintsBuilder = new StringBuilder();
+        for(String s : recipients) {
+            recipeintsBuilder.append(s);
+            recipeintsBuilder.append(ALARM_RECIPIENTS_DELIMINATOR);
+        }
+
+        return insertAlarm(recipeintsBuilder.toString(), text, whatDays, whatTimes, metaData);
+    }
+
+
+    // insert alarm and automatically create our stringified alarm rules representation
+    public long insertAlarm(String recipients, String text, int whatDays, long whatTimes, String metaData) {
+        String rules = new AlarmInfo(whatDays,whatTimes).toString();
+        return insertAlarm(recipients, text, rules, metaData);
+    }
+
     // insert an alarm into the database
     public long insertAlarm(String recipients, String text, String rules, String metaData) {
         ContentValues values = new ContentValues();
+
+        if(TextUtils.isEmpty(metaData)) {
+            metaData = "";
+        }
 
         values.put(COLUMN_ALARM_RECIPIENTS, recipients);
         values.put(COLUMN_ALARM_TEXT, text);
