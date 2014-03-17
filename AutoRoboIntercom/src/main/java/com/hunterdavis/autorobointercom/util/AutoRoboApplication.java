@@ -4,6 +4,8 @@ import android.app.Application;
 import android.content.Context;
 import android.preference.PreferenceManager;
 
+import com.hunterdavis.autorobointercom.database.AlarmsDatabaseSQLHelper;
+
 /**
  * Created by hunter on 3/3/14.
  */
@@ -21,6 +23,8 @@ public class AutoRoboApplication extends Application{
 
         private static AutoRoboApplication instance;
 
+        public AlarmsDatabaseSQLHelper alarmsDatabaseHelper;
+
         public static AutoRoboApplication getInstance() {
             return instance;
         }
@@ -34,6 +38,7 @@ public class AutoRoboApplication extends Application{
         public void onCreate() {
             instance = this;
             super.onCreate();
+            alarmsDatabaseHelper = new AlarmsDatabaseSQLHelper(instance);
         }
 
         // store our name to shared prefs
