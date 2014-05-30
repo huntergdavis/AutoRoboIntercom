@@ -1,6 +1,7 @@
 package com.hunterdavis.autorobointercom.network;
 
 import java.io.IOException;
+import android.os.Looper;
 
 /**
  * Created by hunter on 3/3/14.
@@ -25,6 +26,7 @@ public class NetworkAnnounceThread extends Thread{
 
     @Override
     public void run() {
+        Looper.prepare();
         while (!mFinished) {
             try {
                 NetworkTransmissionUtilities.sendTextToAllClients("");
